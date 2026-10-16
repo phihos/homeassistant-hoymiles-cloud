@@ -34,6 +34,7 @@ resolve them.
   - Grid power import/export
   - Load power consumption
   - Daily and total energy generation
+  - Energy dashboard repair: when data reaches the cloud late, the hourly statistics of "Today's Energy" are redistributed along the cloud's day power curve (checked hourly for today and yesterday)
   - Dynamic PV channel discovery based on the indicators returned by the account
   - Per-channel PV voltage/current/power values via the module-data endpoint when the indicators feed only returns placeholders
   - Reported inverter count and battery settings access diagnostics
@@ -194,6 +195,7 @@ and account identifiers are redacted before the file is written.
 - Economy and Time-of-Use schedules now have draft editor entities in Home Assistant, but the integration still writes the full structured Hoymiles payload on apply.
 - Validation is intentionally conservative for schedule editing: time/date formats and basic numeric ranges are checked before writes, while ambiguous Hoymiles-specific semantics are kept internal.
 - API endpoints and payload structures are based on observed Hoymiles Cloud behavior and may still vary by region, account role, and hardware family.
+- Late uploads (inverter offline for a while, cloud or Home Assistant outage) make the daily counter jump, so the recorder books hours of production into a single hour. At minute 15 of every hour the integration compares the hourly statistics of today and yesterday with the cloud's day power curve and, if an hour is off by more than 100 Wh and 25 %, rewrites the earlier hours of that day. The day total and the latest hour stay untouched. Days whose counter did not restart at midnight are skipped with a warning.
 - On some hardware (observed: HF-800-1WB) the indicators endpoint returns placeholder values for per-channel PV data; the integration then falls back to the module-data chart endpoint (see `docs/hoymiles-module-data-api.md`) for single-microinverter stations. Those values are cached for a few minutes to match the cloud's own refresh rate, and drop to `0` once the inverter stops reporting for the day rather than repeating the last daylight reading.
 
 ## Contributing

@@ -42,6 +42,7 @@ API_REAL_TIME_DATA_URL = f"{API_BASE_URL}/pvm-data/api/0/station/data/count_stat
 API_ENERGY_FLOW_STATS_URL = f"{API_BASE_URL}/pvm-data/api/0/station/data_fd/stat_g_a"
 API_INDICATORS_URL = f"{API_BASE_URL}/pvm-data/api/0/indicators/data/select_real_indicators_data"
 API_MODULE_DAY_DATA_URL = f"{API_BASE_URL}/pvm-data/api/0/module/data/count_by_day"
+API_STATION_DAY_POWER_URL = f"{API_BASE_URL}/pvm-data/api/0/station/data/count_power_by_day"
 
 # Module (per-port PV) chart fallback tuning.
 # The Hoymiles cloud only refreshes plant telemetry every ~5 minutes, so the

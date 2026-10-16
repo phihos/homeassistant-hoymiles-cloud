@@ -13,6 +13,8 @@ from homeassistant.exceptions import ConfigEntryNotReady, HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -50,6 +52,7 @@ from .data import (
     set_schedule_editor_selection,
     update_schedule_editor_draft,
 )
+from .energy_repair import async_repair_day
 from .hoymiles_api import HoymilesAPI, LiveDataAuthError
 from .models import AIStatus, DeviceInventory, EPSProfit, EnergyFlow, FirmwareStatus, SettingRules, StationData
 from .storage import entry_storage_key, migrate_legacy_stations
@@ -949,6 +952,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await _async_register_services(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    repair_warned: set[tuple[str, str]] = set()
+
+    async def async_repair_energy_statistics(_now: Any = None) -> None:
+        """Rebook energy that reached the cloud late into the hours it was produced."""
+        registry = er.async_get(hass)
+        today = dt_util.now().date()
+        for station_id in stations:
+            statistic_id = registry.async_get_entity_id(
+                "sensor", DOMAIN, f"{DOMAIN}_{station_id}_today_energy"
+            )
+            if statistic_id is None:
+                continue
+            for day in (today - timedelta(days=1), today):
+                try:
+                    await async_repair_day(hass, api, station_id, statistic_id, day)
+                except Exception as err:  # noqa: BLE001 - a failed repair must not affect polling
+                    if (statistic_id, str(day)) not in repair_warned:
+                        repair_warned.add((statistic_id, str(day)))
+                        _LOGGER.warning(
+                            "Not repairing %s statistics for %s: %s", statistic_id, day, err
+                        )
+
+    # Minute 15: the recorder has compiled the previous hour by then.
+    entry.async_on_unload(
+        async_track_time_change(hass, async_repair_energy_statistics, minute=15, second=0)
+    )
+    entry.async_on_unload(async_at_started(hass, async_repair_energy_statistics))
     original_options = dict(entry.options)
 
     async def options_update_listener(hass: HomeAssistant, updated_entry: ConfigEntry) -> None:

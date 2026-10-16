@@ -38,6 +38,7 @@ from .const import (
     API_METERS_URL,
     API_INDICATORS_URL,
     API_MODULE_DAY_DATA_URL,
+    API_STATION_DAY_POWER_URL,
     API_BATTERY_SETTINGS_READ_URL,
     API_BATTERY_SETTINGS_WRITE_URL,
     API_BATTERY_SETTINGS_STATUS_URL,
@@ -1555,6 +1556,13 @@ class HoymilesAPI:
     async def get_pv_indicators(self, station_id: str) -> Dict[str, Any]:
         """Get PV indicators data for a station."""
         return await self.get_indicator_data(station_id, INDICATOR_TYPE_PV)
+
+    async def get_station_day_power(self, station_id: str, date: str) -> dict[str, Any]:
+        """Return the decoded station power curve for ``date`` (YYYY-MM-DD)."""
+        raw = await self._post_bytes(
+            API_STATION_DAY_POWER_URL, {"sid": int(station_id), "date": date}
+        )
+        return decode_line_chart(raw)
 
     async def get_module_channel_data(
         self,
